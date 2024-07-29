@@ -1,0 +1,13 @@
+repositories:
+  - name: gitlab
+    url: https://charts.gitlab.io/
+
+releases:
+  - name: gitlab-chart
+    namespace: gitlab
+    chart: ./gitlab-chart
+    timeout: 600
+    values:
+      - ./gitlab-chart/values.yaml
+
+

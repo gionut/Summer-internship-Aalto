@@ -1,0 +1,12 @@
+dist/
+.idea/
+/helmfile
+/helmfile.lock
+/diff-yamls
+/yamldiff
+test/integration/tmp$
+vendor/
+*.log
+.vagrant/
+*.lock
+test/integration/.gnupg/

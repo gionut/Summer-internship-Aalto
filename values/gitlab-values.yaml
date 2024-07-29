@@ -1,0 +1,13 @@
+global:
+  hosts:
+    domain: example.com
+    externalIP: 10.10.10.10
+
+certmanager-issuer:
+  email: me@example.com
+
+postgresql:
+  imagetag: 13.6.0
+
+prometheus:
+  install: false

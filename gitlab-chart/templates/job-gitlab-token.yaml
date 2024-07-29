@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gitlab-token-job
+  namespace: gitlab
+spec:
+  template:
+    spec:
+      serviceAccountName: token-job-sa
+      containers:
+      - name: gitlab-token
+        image: bitnami/kubectl:latest
+        command: ["sh", "-c"]
+        args:
+          - |
+            apk add --no-cache curl jq;
+            while ! curl -s http://gitlab.gitlab.svc.cluster.local; do sleep 5; done;
+            token=$(curl -X POST -H "Content-Type: application/json" \
+            -d '{"login":"yourlogin","password":"yourpassword"}' \
+            http://gitlab.gitlab.svc.cluster.local/api/v4/session | jq -r .private_token);
+            kubectl create secret generic gitlab-token --from-literal=token=$token -n default;
+      restartPolicy: OnFailure
+  backoffLimit: 4
+
