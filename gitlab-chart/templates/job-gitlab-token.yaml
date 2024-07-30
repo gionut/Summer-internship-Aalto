@@ -9,16 +9,33 @@ spec:
       serviceAccountName: token-job-sa
       containers:
       - name: gitlab-token
-        image: bitnami/kubectl:latest
+        image: ionutsgroza/kubectl-curl-jq:v0.1
         command: ["sh", "-c"]
         args:
           - |
-            apk add --no-cache curl jq;
-            while ! curl -s http://gitlab.gitlab.svc.cluster.local; do sleep 5; done;
-            token=$(curl -X POST -H "Content-Type: application/json" \
-            -d '{"login":"yourlogin","password":"yourpassword"}' \
-            http://gitlab.gitlab.svc.cluster.local/api/v4/session | jq -r .private_token);
-            kubectl create secret generic gitlab-token --from-literal=token=$token -n default;
+            echo "\nDeleting gitlab-chart-gitlab-root-private-token secret if exists...\n"
+            kubectl -n gitlab delete secret gitlab-chart-gitlab-root-private-token --ignore-not-found
+
+            echo "\nCreating gitlab-chart-gitlab-root-private-token secret...\n"
+            PRIVATE_TOKEN=$(head -c 512 /dev/urandom | LC_CTYPE=C tr -cd 'a-zA-Z0-9' | head -c 32)
+            kubectl -n gitlab create secret generic gitlab-chart-gitlab-root-private-token --from-literal=token=$PRIVATE_TOKEN
+
+            echo "\nWaiting for the gitlab webserver to respond...\n"
+            while ! curl -s http://gitlab-chart-webservice-default:8181; do sleep 5; done;
+
+            echo "\nCreate Personal Access Token via toolbox rails runner...\n" 
+            TOOLBOX_POD=$(kubectl -n gitlab get pods -lapp=toolbox -o jsonpath='{.items[0].metadata.name}')
+            kubectl -n gitlab exec -c toolbox $TOOLBOX_POD -- gitlab-rails runner \
+                  "token = User.find_by_username('root').personal_access_tokens.create(scopes: ['admin_mode', 'read_user', 'api', 'read_api'], name: 'Root Token', expires_at: 365.days.from_now); token.set_token(\"$PRIVATE_TOKEN\"); token.save!"
+
+            echo "\nCreate Instance Runner via gitlab API...\n"
+            IRAT=$(curl -s --request POST --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --data "runner_type=instance_type" "http://gitlab-chart-webservice-default:8181/api/v4/user/runners" | jq -r '.token')
+
+            echo "\nCreat Instance Runner Authentication Token secret\n"
+            kubectl -n gitlab delete secret gitlab-chart-gitlab-irat --ignore-not-found
+            kubectl -n gitlab create secret generic gitlab-chart-gitlab-irat --from-literal=token=$IRAT
+            echo "\nDone!\n"
+
       restartPolicy: OnFailure
   backoffLimit: 4
 
