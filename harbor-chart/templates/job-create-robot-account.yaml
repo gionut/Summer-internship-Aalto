@@ -1,0 +1,120 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: create-robot-request-body-config-map
+  namespace: gitlab
+data:
+  body.json: |
+    {
+        "description": "robot for accessing Harbor from Gitlab Runner",
+        "disable": false,
+        "duration": -1,
+        "editable": true,
+        "expires_at": -1,
+        "level": "system",
+        "name": "gitlab-robot-test",
+        "permissions": [
+            {
+                "access": [
+                    {
+                        "action": "read",
+                        "resource": "project"
+                    },
+                    {
+                        "action": "update",
+                        "resource": "project"
+                    },
+                    {
+                        "action": "create",
+                        "resource": "artifact"
+                    },
+                    {
+                        "action": "list",
+                        "resource": "artifact"
+                    },
+                    {
+                        "action": "read",
+                        "resource": "artifact"
+                    },
+                    {
+                        "action": "list",
+                        "resource": "repository"
+                    },
+                    {
+                        "action": "pull",
+                        "resource": "repository"
+                    },
+                    {
+                        "action": "push",
+                        "resource": "repository"
+                    },
+                    {
+                        "action": "read",
+                        "resource": "repository"
+                    },
+                    {
+                        "action": "update",
+                        "resource": "repository"
+                    }
+              ],
+                "kind": "project",
+                "namespace": "library"
+            }
+        ]
+    }
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: harbor-create-robot-account
+  namespace: gitlab
+spec:
+  template:
+    spec:
+      serviceAccountName: token-job-sa
+      containers:
+          - name: harbor-job
+            image: ionutsgroza/kubectl-curl-jq:v0.1
+            command: ["sh", "-c"]
+            args:
+            - |
+              HARBOR_PASSWORD=$(kubectl -n gitlab get secret harbor-core \
+                -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 --decode)
+
+              echo "\nWaiting for the harbor webserver to respond...\n"
+              while ! curl -s -k https://harbor; do sleep 5; done;
+     
+              echo "\nCreating the Robot Account...\n"
+    
+              RESPONSE=$(curl -s -k \
+                --user admin:$HARBOR_PASSWORD \
+                --request POST \
+                --header "Content-Type: application/json" \
+                --data @/etc/config/body.json \
+                https://harbor/api/v2.0/robots)
+              
+              echo "\nRobot Account Created successfully\n"
+              ROBOT_NAME=$(echo $RESPONSE | jq -r '.name')
+              ROBOT_SECRET=$(echo $RESPONSE | jq -r '.secret')
+            
+              echo "\nCreating Robot Account Secrets...\n"
+              echo "\nDeleting the secret if exists...\n"
+              kubectl -n gitlab delete secret \
+                harbor-robot-account-secret --ignore-not-found
+              kubectl -n gitlab create secret generic \
+                harbor-robot-account-secret \
+                --from-literal=name="$ROBOT_NAME" \
+                --from-literal=secret="$ROBOT_SECRET"
+
+              echo "\nDone!\n"
+            volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: create-robot-request-body-config-map
+      restartPolicy: OnFailure
+  backoffLimit: 4

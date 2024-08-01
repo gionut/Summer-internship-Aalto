@@ -1,0 +1,11 @@
+harbor:
+  expose:
+    type: clusterIP
+    tls:
+      auto:
+        commonName: "gitlab.harbor"
+
+  externalURL: https://gitlab.harbor #Replace with templating namespace
+
+  trivy:
+    enabled: false

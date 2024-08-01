@@ -1,6 +1,8 @@
 repositories:
   - name: gitlab
     url: https://charts.gitlab.io/
+  - name: harbor
+    url: https://helm.goharbor.io/
 
 releases:
   - name: gitlab-chart
@@ -10,4 +12,8 @@ releases:
     values:
       - ./gitlab-chart/values.yaml
 
-
+  - name: harbor
+    namespace: gitlab
+    chart: ./harbor-chart
+    values:
+      - ./harbor-chart/values.yaml
