@@ -1,0 +1,53 @@
+gitlab-runner:
+  concurrent: 2
+  logLevel: "debug"
+  gitlabUrl: "http://gitlab-chart-webservice-default:8181"
+  runners:
+    locked: null
+    privileged: true
+    pollTimeout: 600
+    url: "http://gitlab-chart-webservice-default:8181"
+    cloneUrl: "http://gitlab-chart-webservice-default:8181"
+    config: |
+      [[runners]]
+        url="http://gitlab-chart-webservice-default:8181"
+        clone_url="http://gitlab-chart-webservice-default:8181"
+        [runners.kubernetes]
+          poll_timeout=600
+          image = "ubuntu:20.04"
+          privileged = true
+        [[runners.kubernetes.volumes.secret]]
+          name = "harbor-nginx-ca"
+          mount_path = "/etc/docker/certs.d/harbor/"
+          sub_path = "ca.crt"
+        [[runners.kubernetes.volumes.empty_dir]]
+          name = "harbor-nginx"
+          mount_path = "/certs/client"
+          sub_path = "ca.crt"
+          medium = "Memory"
+  
+  runnerToken: "dummyValue"
+  serviceAccount:
+    create:
+      true
+  rbac:
+    create: true
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["list", "get", "watch", "create", "delete"]
+      - apiGroups: [""]
+        resources: ["pods/exec"]
+        verbs: ["create"]
+      - apiGroups: [""]
+        resources: ["pods/log"]
+        verbs: ["get"]
+      - apiGroups: [""]
+        resources: ["pods/attach"]
+        verbs: ["list", "get", "create", "delete", "update"]
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["list", "get", "create", "delete", "update"]      
+      - apiGroups: [""]
+        resources: ["configmaps"]
+        verbs: ["list", "get", "create", "delete", "update"]

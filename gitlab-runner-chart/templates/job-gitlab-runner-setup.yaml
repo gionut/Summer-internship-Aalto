@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gitlab-runner-setup-job
+  namespace: gitlab
+spec:
+  template:
+    spec:
+      serviceAccountName: token-job-sa
+      containers:
+      - name: gitlab-runner-setup
+        image: ionutsgroza/kubectl-curl-jq:v0.1
+        command: ["sh", "-c"]
+        args:
+          - |
+            echo "\nWait for the IRAT secret to become available\n"
+            kubectl -n gitlab wait --timeout=600s --for=condition=complete job/gitlab-token-job
+            echo "\nProviding the Instance Runner Authentication Token...\n"
+            IRAT=$(kubectl -n gitlab get secret gitlab-chart-gitlab-irat -o jsonpath="{.data.token}")
+            kubectl -n gitlab get secret runner-gitlab-runner -o json | jq --arg key "runner-token" --arg value "$IRAT" '.data[$key] = $value' | kubectl apply -f -
+            echo "\nDone!\n"
+
+      restartPolicy: OnFailure
+  backoffLimit: 4
+

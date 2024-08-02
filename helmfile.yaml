@@ -17,3 +17,9 @@ releases:
     chart: ./harbor-chart
     values:
       - ./harbor-chart/values.yaml
+
+  - name: runner
+    namespace: gitlab
+    chart: ./gitlab-runner-chart
+    values:
+      - ./gitlab-runner-chart/values.yaml

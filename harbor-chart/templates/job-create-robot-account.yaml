@@ -87,7 +87,9 @@ spec:
               while ! curl -s -k https://harbor; do sleep 5; done;
      
               echo "\nCreating the Robot Account...\n"
-    
+              ID=$(curl -s -k --user admin:Harbor12345 https:/localhost:8080/api/v2.0/robots?q=name=~gitlab | jq '.[] | .id') 
+              curl -s -k --request DELETE --user admin:$HARBOR_PASSWORD https:/localhost:8080/api/v2.0/robots/$ID 
+
               RESPONSE=$(curl -s -k \
                 --user admin:$HARBOR_PASSWORD \
                 --request POST \
@@ -107,7 +109,15 @@ spec:
                 harbor-robot-account-secret \
                 --from-literal=name="$ROBOT_NAME" \
                 --from-literal=secret="$ROBOT_SECRET"
-
+            
+              echo "\nDuplicating harbor-nginx secret to harbor-nginx-ca secret...\n"
+              echo "\nDeleting harbor-nginx-ca secret if exists...\n"
+              kubectl -n gitlab delete secret harbor-nginx-ca --ignore-not-found
+              
+              echo "\nCreating harbor-nginx-ca secret...\n"
+              CA_SECRET=$(kubectl get secret -n gitlab harbor-nginx -o jsonpath="{.data.ca\.crt}")
+              kubectl -n gitlab create secret generic harbor-nginx-ca --from-literal=ca.crt="$CA_SECRET"
+            
               echo "\nDone!\n"
             volumeMounts:
             - name: config-volume
