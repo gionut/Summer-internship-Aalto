@@ -10,3 +10,5 @@ gitlab:
       tag: 13.6.0
   prometheus:
     install: false
+  gitlab-runner:
+    install: false

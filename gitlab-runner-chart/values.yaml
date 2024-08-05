@@ -19,11 +19,9 @@ gitlab-runner:
         [[runners.kubernetes.volumes.secret]]
           name = "harbor-nginx-ca"
           mount_path = "/etc/docker/certs.d/harbor/"
-          sub_path = "ca.crt"
         [[runners.kubernetes.volumes.empty_dir]]
           name = "harbor-nginx"
-          mount_path = "/certs/client"
-          sub_path = "ca.crt"
+          mount_path = "/certs/client/"
           medium = "Memory"
   
   runnerToken: "dummyValue"
