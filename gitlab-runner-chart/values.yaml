@@ -18,7 +18,7 @@ gitlab-runner:
           privileged = true
         [[runners.kubernetes.volumes.secret]]
           name = "harbor-nginx-ca"
-          mount_path = "/etc/docker/certs.d/harbor/"
+          mount_path = "/etc/docker/certs.d/harbor.gitlab/"
         [[runners.kubernetes.volumes.empty_dir]]
           name = "harbor-nginx"
           mount_path = "/certs/client/"

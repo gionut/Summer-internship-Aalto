@@ -17,7 +17,29 @@ spec:
             kubectl -n gitlab wait --timeout=600s --for=condition=complete job/gitlab-token-job
             echo "\nProviding the Instance Runner Authentication Token...\n"
             IRAT=$(kubectl -n gitlab get secret gitlab-chart-gitlab-irat -o jsonpath="{.data.token}")
-            kubectl -n gitlab get secret runner-gitlab-runner -o json | jq --arg key "runner-token" --arg value "$IRAT" '.data[$key] = $value' | kubectl apply -f -
+            kubectl -n gitlab get secret runner-gitlab-runner -o json \
+              | jq --arg key "runner-token" \
+                    --arg value "$IRAT" '.data[$key] = $value' \
+              | kubectl apply -f -
+
+            echo "\nSet ROBOT_ACCOUNT_SECRET environment variable via API\n"
+            PRIVATE_TOKEN=$(kubectl -n gitlab get secret \
+              gitlab-chart-gitlab-root-private-token \
+                -o jsonpath="{.data.token}" | base64 --decode)
+            
+            ROBOT_ACCOUNT_SECRET=$(kubectl -n gitlab get secret \
+              harbor-robot-account-secret \
+                -o jsonpath="{.data.secret}" | base64 --decode)
+            
+            echo "\nRemove previously configured ROBOT_ACCOUNT_SECRET environment variable\n"
+            curl -s --request DELETE --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" \
+              "http://gitlab-chart-webservice-default:8181/api/v4/admin/ci/variables/ROBOT_ACCOUNT_SECRET"
+
+            echo "\nAdd newly configured ROBOT_ACCOUNT_SECRET environment variable\n"
+            curl --request POST --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" \
+              "http://gitlab-chart-webservice-default:8181/api/v4/admin/ci/variables" \
+                --form "key=ROBOT_ACCOUNT_SECRET" --form "value=$ROBOT_ACCOUNT_SECRET" --form "masked=true"
+
             echo "\nDone!\n"
 
       restartPolicy: OnFailure

@@ -3,9 +3,9 @@ harbor:
     type: clusterIP
     tls:
       auto:
-        commonName: "harbor"
+        commonName: "harbor.gitlab"
 
-  externalURL: https://harbor #Replace with templating namespace
+  externalURL: https://harbor.gitlab #Replace with templating namespace
 
   trivy:
     enabled: false

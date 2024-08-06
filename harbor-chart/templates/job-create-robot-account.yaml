@@ -84,24 +84,24 @@ spec:
                 -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 --decode)
 
               echo "\nWaiting for the harbor webserver to respond...\n"
-              while ! curl -s -k https://harbor; do sleep 5; done;
+              while ! curl -s -k https://harbor.gitlab; do sleep 5; done;
      
               echo "\nCreating the Robot Account...\n"
               ID=$(curl -k --user admin:$HARBOR_PASSWORD \
-                https://harbor/api/v2.0/robots?q=name=~gitlab \
+                https://harbor.gitlab/api/v2.0/robots?q=name=~gitlab \
                 | jq '.[] | .id' \
               )
 
               echo "\nDeleting robot account with ID=$ID\n"
               curl -s -k --request DELETE --user admin:$HARBOR_PASSWORD \
-                "https://harbor/api/v2.0/robots/$ID" 
+                "https://harbor.gitlab/api/v2.0/robots/$ID" 
 
               RESPONSE=$(curl -s -k \
                 --user admin:$HARBOR_PASSWORD \
                 --request POST \
                 --header "Content-Type: application/json" \
                 --data @/etc/config/body.json \
-                https://harbor/api/v2.0/robots)
+                https://harbor.gitlab/api/v2.0/robots)
               
               echo "\nRobot Account Created successfully\n"
               ROBOT_NAME=$(echo $RESPONSE | jq -r '.name')
