@@ -10,19 +10,28 @@ releases:
     chart: ./gitlab-chart
     timeout: 600
     values:
-      - ./gitlab-chart/values.yaml
+     - ./gitlab-chart/values.yaml
 
   - name: harbor
     namespace: gitlab
     chart: ./harbor-chart
     values:
-      - ./harbor-chart/values.yaml
+     - ./harbor-chart/values.yaml
 
   - name: runner
     namespace: gitlab
     chart: ./gitlab-runner-chart
     needs: 
-      - harbor
-      - gitlab-chart
+     - harbor
+     - gitlab-chart
     values:
-      - ./gitlab-runner-chart/values.yaml
+     - ./gitlab-runner-chart/values.yaml
+
+  - name: push-repo
+    namespace: gitlab
+    chart: ./push-repo-chart
+    needs: 
+     - runner
+    values:
+     - ./push-repo-chart/values.yaml
+     - repo_token: ""
