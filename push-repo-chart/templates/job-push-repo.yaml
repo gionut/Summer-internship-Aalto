@@ -1,0 +1,46 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: git-job
+spec:
+  template:
+    spec:
+      containers:
+        - name: git-container
+          image: ionutsgroza/git-curl-jq:v0.1
+          command: ["sh", "-c"]
+          args:
+          - |
+            echo "\n Configure Gitlab Project\n"
+            echo "\n Delete the project if it already exists\n"
+            curl --request DELETE --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" \
+                http://gitlab-chart-webservice-default:8181/api/v4/projects/root%2Fproject
+
+            echo "\n Clone the project repository from the external source\n"
+            git clone https://oauth2:$REPO_TOKEN@github.com/gionut/gitlab-pipeline-test-repo
+
+            cd /gitlab-pipeline-test-repo
+            ls -al
+
+            rm -r .git
+            git init
+
+            ADMIN_EMAIL=$(curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" -k \
+              http://gitlab-chart-webservice-default:8181/api/v4/users | jq -r '.[0].email')
+            git config --global user.email "$ADMIN_EMAIL"
+            git config --global user.name "root"
+
+            git add .
+            git commit -m "initial commit"
+            git -c http.sslVerify=false push --set-upstream \
+            http://root:$PRIVATE_TOKEN@gitlab-chart-webservice-default:8181/root/project.git master
+          env:
+            - name: PRIVATE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gitlab-chart-gitlab-root-private-token
+                  key: token
+            - name: REPO_TOKEN
+              value: {{ .Values.repo_token }}
+      restartPolicy: Never 
