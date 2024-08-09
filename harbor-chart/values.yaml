@@ -6,6 +6,3 @@ harbor:
         commonName: "harbor.gitlab"
 
   externalURL: https://harbor.gitlab #Replace with templating namespace
-
-  trivy:
-    enabled: false
