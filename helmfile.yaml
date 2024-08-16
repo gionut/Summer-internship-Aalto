@@ -3,6 +3,8 @@ repositories:
     url: https://charts.gitlab.io/
   - name: harbor
     url: https://helm.goharbor.io/
+  - name: sonarqube
+    url: https://SonarSource.github.io/helm-chart-sonarqube
 
 releases:
   - name: gitlab-chart
@@ -26,11 +28,21 @@ releases:
      - gitlab-chart
     values:
      - ./gitlab-runner-chart/values.yaml
+  
+  - name: sonarqube
+    namespace: gitlab
+    chart: ./sonarqube-chart
+    needs:
+      - gitlab-chart
+      - runner
+    values:
+      - ./sonarqube-chart/values.yaml
 
   - name: push-repo
     namespace: gitlab
     chart: ./push-repo-chart
     needs: 
+     - sonarqube
      - runner
     values:
      - ./push-repo-chart/values.yaml
