@@ -1,0 +1,84 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sonarqube-setup-job
+  namespace: gitlab
+spec:
+  template:
+    spec:
+      serviceAccountName: token-job-sa
+      containers:
+      - name: gitlab-runner-setup
+        image: ionutsgroza/kubectl-curl-jq:v0.1
+        command: ["sh", "-c"]
+        args:
+          - |
+            echo "\nWait for the sonarqube service to start\n"
+            while ! curl -s http://sonarqube-sonarqube:9000/api/server/version; do sleep 5; done;
+ 
+            echo "\nCreate the alm configuration for Gitlab...\n"
+            curl --request POST \
+              -u admin:$SONAR_ADMIN_PASSWORD \
+              --form "key=gitlab-alm-config" \
+              http://sonarqube-sonarqube:9000/api/alm_settings/delete
+              
+            curl --request POST \
+              -u admin:$SONAR_ADMIN_PASSWORD \
+              --form "key=gitlab-alm-config" \
+              --form "personalAccessToken=$PRIVATE_TOKEN" \
+              --form 'url="http://gitlab-chart-nginx-ingress-controller:8181/api/v4"' \
+              http://sonarqube-sonarqube:9000/api/alm_settings/create_gitlab
+
+            echo "\nCreate a project in sonarqube.\n"
+
+            curl --request POST \
+              -u admin:$SONAR_ADMIN_PASSWORD \
+              --form "project=gitlabproject" \
+              http://sonarqube-sonarqube:9000/api/projects/delete
+            
+            echo "\nCreating the new project \n"
+            curl --request POST -u admin:$SONAR_ADMIN_PASSWORD \
+              --form "name=GitlabProject" \
+              --form "project=gitlabproject" \
+              --form "mainBranch=master" \
+              "http://sonarqube-sonarqube:9000/api/projects/create"
+            
+            echo "\nEnable Sonarqube scan in Gitlab CI/CD via CI/CD Variables!\n"
+            curl --request POST \
+              -u admin:$SONAR_ADMIN_PASSWORD \
+              --form "login=admin" \
+              --form "name=project_token" \
+              http://sonarqube-sonarqube:9000/api/user_tokens/revoke
+            
+            SONAR_TOKEN=$(curl --request POST \
+              -u admin:$SONAR_ADMIN_PASSWORD \
+              --form "name=project_token" \
+              --form "type=GLOBAL_ANALYSIS_TOKEN" \
+              http://sonarqube-sonarqube:9000/api/user_tokens/generate | jq -r '.token')
+            
+            echo "\nSetting CI/CD variables\n"
+            curl -s --request DELETE --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" \
+              "http://gitlab-chart-webservice-default:8181/api/v4/admin/ci/variables/SONAR_TOKEN"
+            curl -s --request POST --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" \
+              "http://gitlab-chart-webservice-default:8181/api/v4/admin/ci/variables" \
+              --form "key=SONAR_TOKEN" --form "value=$SONAR_TOKEN" --form "masked=true" --form "protected=false"
+
+            SONAR_HOST_URL="http://sonarqube-sonarqube:9000"
+            curl -s --request DELETE --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" \
+              "http://gitlab-chart-webservice-default:8181/api/v4/admin/ci/variables/SONAR_HOST_URL"
+            curl --request POST --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" \
+              "http://gitlab-chart-webservice-default:8181/api/v4/admin/ci/variables" \
+              --form "key=SONAR_HOST_URL" --form "value=$SONAR_HOST_URL" --form "masked=false" --form "protected=false"
+            echo "\nDone!\n"
+            
+        env:
+          - name: PRIVATE_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: gitlab-chart-gitlab-root-private-token
+                key: token
+          - name: SONAR_ADMIN_PASSWORD
+            value: {{ .Values.sonarqube.account.adminPassword }}
+      restartPolicy: OnFailure
+  backoffLimit: 4
+

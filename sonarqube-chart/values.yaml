@@ -1,0 +1,4 @@
+sonarqube:
+  account:
+    adminPassword: admin12345
+    currentAdminPassword: admin
