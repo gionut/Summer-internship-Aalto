@@ -84,7 +84,7 @@ spec:
                 -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 --decode)
 
               echo "\nWaiting for the harbor webserver to respond...\n"
-              while ! curl -s -k https://harbor.gitlab; do sleep 5; done;
+              while ! curl -s -k https://harbor.gitlab/api/v2.0/health; do sleep 5; done;
      
               echo "\nCreating the Robot Account...\n"
               ID=$(curl -k --user admin:$HARBOR_PASSWORD \
