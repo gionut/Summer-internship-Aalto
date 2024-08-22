@@ -22,6 +22,16 @@ kubectl -n gitlab port-forward svc/harbor 8080:443
 kubectl -n gitlab port-forward svc/sonarqube-sonarqube 9000:9000
 ```
 
+## Passwords
+
+To obtain Gitlab password
+```shell
+# Username is root
+kubectl -n gitlab get secret gitlab-chart-gitlab-initial-root-password -o jsonpath="{.data.password}" | base64 --decode
+```
+Sonarqube: admin admin12345
+Harbor: admin Harbor12345
+
 # Troubleshooting
 
 Check the logs of all the jobs for errors:
