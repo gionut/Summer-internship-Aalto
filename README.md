@@ -30,6 +30,7 @@ To obtain Gitlab password
 kubectl -n gitlab get secret gitlab-chart-gitlab-initial-root-password -o jsonpath="{.data.password}" | base64 --decode
 ```
 Sonarqube: admin admin12345
+
 Harbor: admin Harbor12345
 
 # Troubleshooting
